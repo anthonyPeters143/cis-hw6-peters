@@ -13,9 +13,24 @@ public class ClientHandler implements Runnable {
 
     private String code;
 
+    private String returnString;
+
+    private boolean validFlag;
+
+//    ClientHandler(int portInput, String hostInput) {
+//        port = portInput;
+//        host = hostInput;
+//    }
+
     ClientHandler(int portInput, String hostInput, String codeInput) {
         port = portInput;
         host = hostInput;
+        code = codeInput;
+        returnString = "";
+        validFlag = false;
+    }
+
+    public void setCode(String codeInput) {
         code = codeInput;
     }
 
@@ -32,10 +47,41 @@ public class ClientHandler implements Runnable {
             // Output to server
             clientOutput.writeUTF(code);
 
-            System.out.println(clientInput.readUTF());
+            returnString = clientInput.readUTF();
+
+            // Check if return valid is valid, set valid flag
+            if (!returnString.equals("")) {
+                validFlag = true;
+            }
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+    public boolean testConnection() {
+        try {
+            // Try to create socket connection
+            Socket socket = new Socket(host,port);
+
+            // Close socket
+            socket.close();
+
+            // Connection valid
+            return true;
+        } catch (IOException ioException) {
+            // Connection invalid
+            return false;
+        }
+    }
+
+    public String getReturnString() {
+        return returnString;
+    }
+
+    public boolean isValidFlag() {
+        return validFlag;
+    }
+
+
 }

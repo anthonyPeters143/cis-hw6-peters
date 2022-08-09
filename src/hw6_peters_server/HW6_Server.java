@@ -1,84 +1,129 @@
 package hw6_peters_server;
 
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.stage.Stage;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.*;
+import java.util.regex.Pattern;
 
-public class HW6_Server {
+public class HW6_Server extends Application {
+
+    static ServerSocket serverSocket;
+
+    static Connection connection;
+
+    /**
+     * Formatting fonts
+     */
+    private static final Font titleFont = new Font("Lucida Sans Unicode",30),
+            bodyFont = new Font("Lucida Sans Unicode",15),
+            buttonFont = new Font("Lucida Sans Unicode",15),
+            receiptFont = new Font("Lucida Sans Unicode",10);
+
+    /**
+     * Formatting spacing variable
+     */
+    private static final int sceneSpace = 20;
+
+    private static boolean quitFlag;
+
+    static Label serverLabel;
+
     public static void main(String[] args) throws SQLException, ClassNotFoundException {
+        launch();
+    }
+
+    @Override
+    public void start(Stage stage) throws SQLException, ClassNotFoundException, IOException {
+        // Initialize serverScene GUI
+        serverLabel = new Label();
+        Pane serverPane = new Pane(serverLabel);
+        serverLabel.setFont(bodyFont);
+        Scene serverScene = new Scene(serverPane);
+
+        // Set stage title and scene
+        stage.setTitle("Server POS System");
+        stage.setScene(serverScene);
+        stage.setOnCloseRequest(windowEvent -> {
+            // Quit event
+            System.exit(0);
+        });
+
+        // Initialize server data
         // Load driver
         Class.forName("org.sqlite.JDBC");
-
-//        // Absolute path
-//        String itemDB_URL = "jdbc:sqlite:\\C:\\Users\\Anthony\\Desktop\\School\\SVSU\\Spring 2022\\CIS 357\\HW6\\cis-hw6-peters\\src\\resources\\item.db";
 
         // Relative path
         String itemDB_RelativePath = "src\\resources\\item.db";
         String itemDB_DRIVER_RelativeUrl = "jdbc:sqlite:" + itemDB_RelativePath;
 
         // Set up connection
-        Connection connection = DriverManager.getConnection(itemDB_DRIVER_RelativeUrl);
-        System.out.println("Database connection complete");
+        connection = DriverManager.getConnection(itemDB_DRIVER_RelativeUrl);
 
-        try {
-            // Starting port
-            int clientAmount = 0;
-            int portNum = 8001;
-            ServerSocket serverSocket = new ServerSocket(portNum);
+        int portNum = 8001;
+        serverSocket = new ServerSocket(portNum);
 
-            // Get ID print to server
-            InetAddress serverInetAddress = serverSocket.getInetAddress();
-            System.out.println("Server address " + serverInetAddress);
+        // Get ID print to server
+        InetAddress serverInetAddress = serverSocket.getInetAddress(); // Update serverLabel
+        System.out.println("Server address " + serverInetAddress);
 
-            // Forever loop to allow multiple clients
-            while (true) {
-                // Socket listen and accept request
-                Socket socket = serverSocket.accept();
+//        Platform.runLater(new Runnable() {
+//            @Override
+//            public void run() {
+//                serverLabel.setText("Database connection complete\nServer address :" + serverInetAddress);
+//                stage.show();
+//            }
+//        });
 
-                // Increase client counter
-                clientAmount++;
+        serverLabel.setText("Database connection complete\nServer address :" + serverInetAddress);
 
-                // Print client address
-                InetAddress clientInetAddress = socket.getInetAddress();
-                System.out.println("Client " + clientAmount + " address" + clientInetAddress);
+        stage.show();
 
-                // Start thread
-                new ServerHandler(socket,connection).run();
-            }
+        while (true) {
+            // Connect to client
+            Socket socket = serverSocket.accept();
 
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
+            Thread thread = new Thread(new ServerHandler(socket,connection));
+            thread.start();
         }
 
-
-        // Create statement
-        Statement statement = connection.createStatement();
-
-        // Execute statement
-        ResultSet resultSet = statement.executeQuery("select item_code, item_name, unit_price from item");
-
-        // Cycle results
-        while (resultSet.next()) {
-            System.out.println(resultSet.getString(1) + "," +
-                    resultSet.getString(2) + "," +
-                    resultSet.getString(3));
-        }
-
-        // Cycle results
-        while (resultSet.next()) {
-            System.out.println(resultSet.getString(1) + "," +
-                    resultSet.getString(2) + "," +
-                    resultSet.getString(3));
-        }
-
-
-
-        connection.close();
+//        runServer(stage);
     }
 
+    private static void runServer(Stage stage) throws IOException {
+        while (true) {
+            // Connect to client
+            Socket socket = serverSocket.accept();
 
+            // Start thread
+//            ServerHandler serverHandler = new ServerHandler(socket,connection);
+//            serverHandler.run();
+
+            Thread thread = new Thread(new ServerHandler(socket,connection));
+            thread.start();
+        }
+    }
+
+//    private static void createGUI(Stage stage) throws IOException, SQLException {
+//
+//    }
+
+//    static void setUpServer() throws IOException, SQLException, ClassNotFoundException {
+//
+//    }
 
 
 }

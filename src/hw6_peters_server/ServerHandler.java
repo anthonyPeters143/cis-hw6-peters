@@ -2,6 +2,7 @@ package hw6_peters_server;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.sql.Connection;
@@ -14,9 +15,17 @@ public class ServerHandler implements Runnable {
 
     private Connection connection;
 
+    private static ResultSet resultSet;
+
+    private static String returnString;
+
+    private static boolean resultSetEmpty;
+
     public ServerHandler(Socket socketInput, Connection connectionInput) {
         socket = socketInput;
         connection = connectionInput;
+        returnString = "";
+        resultSetEmpty = true;
     }
 
     /**
@@ -27,18 +36,17 @@ public class ServerHandler implements Runnable {
      * @return
      * @throws SQLException
      */
-    public static ResultSet getResultFromCode(Connection dbConnection, String codeInput) {
+    public static void setResultSetFromCode(Connection dbConnection, String codeInput) {
         try {
             // Create statement for database
             Statement statement = dbConnection.createStatement();
 
             // Find and return statement from database
-            return statement.executeQuery("select * from item where item_code = '" + codeInput + "';");
+            resultSet = statement.executeQuery("select * from item where item_code = '" + codeInput + "';");
 
-        } catch (SQLException sqlException) {
-            return null;
+        } catch (Exception exception) {
+            resultSet = null;
         }
-
     }
 
     @Override
@@ -51,36 +59,36 @@ public class ServerHandler implements Runnable {
             // Get client code input
             String codeInput = clientInput.readUTF();
 
-            // Find results
-            ResultSet resultSet = getResultFromCode(connection,codeInput);
+            // Set resultSet from code input
+            setResultSetFromCode(connection,codeInput);
 
-            String returnString = "";
+            if (!resultSet.next()) {
+                // Input invalid, send empty string to clientOutput to indicate invalid input
+                returnString = "";
+            } else {
+                do {
+                    // Input valid, send return string to clientOutput
+                    // Concat result list from database
+                    returnString = returnString.concat(
+                            resultSet.getString(1) + "," +
+                                    resultSet.getString(2) + "," +
+                                    resultSet.getString(3));
 
-            // Cycle result list
-            while (resultSet.next()) {
-                returnString = returnString.concat(resultSet.getString(1) + "," +
-                        resultSet.getString(2) + "," +
-                        resultSet.getString(3)
-                );
+                } while (resultSet.next());
             }
 
-            // Send data to client
+            // Send returnString to client
             clientOutput.writeUTF(returnString);
 
-            // Update gui
+        } catch (EOFException | SQLException ignored) {
 
-
-        } catch (IOException | NullPointerException exception) {
-            exception.printStackTrace();
-
-            // UPDATE TO SEND BY FEEDBACK
-        } catch (SQLException sqlException) {
-            sqlException.printStackTrace();
-//            throw new RuntimeException(sqlException);
-
-            // UPDATE TO SEND BY FEEDBACK
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-
     }
 
+    @Override
+    public String toString() {
+        return returnString;
+    }
 }
